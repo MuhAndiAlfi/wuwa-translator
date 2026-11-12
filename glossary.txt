@@ -1,0 +1,89 @@
+# Istilah yang TIDAK diterjemahkan DeepL.
+#   Istilah            -> dibiarkan apa adanya
+#   Istilah => Ganti   -> dipaksa jadi teks lain
+# Huruf besar/kecil berpengaruh. Tambah sendiri sesuai kebutuhan.
+
+# Istilah game
+Rover
+Resonator
+Resonators
+Resonance
+Resonance Liberation
+Resonance Skill
+Forte Circuit
+Intro Skill
+Outro Skill
+Echo
+Echoes
+Tacet Discord
+Tacet Discords
+Tacet Mark
+Tacet Field
+Threnodian
+Fractsidus
+Lament
+Sentinel
+Sentinels
+Waveworn Phenomenon
+Waveworn
+Sonance Casket
+Shell Credit
+Shell Credits
+Astrite
+Lunite
+Union Level
+SOL3 Phase
+Data Bank
+
+# Tempat & organisasi
+Huanglong
+Jinzhou
+Rinascita
+Ragunna
+Mt. Firmament
+Black Shores
+Midnight Rangers
+Court of Savantae
+Jinzhou Patrol
+
+# Karakter (tambahkan karakter lain sendiri)
+Yangyang
+Chixia
+Baizhi
+Sanhua
+Jiyan
+Jianxin
+Yinlin
+Encore
+Calcharo
+Lingyang
+Verina
+Danjin
+Mortefi
+Aalto
+Taoqi
+Yuanwu
+Jinhsi
+Changli
+Zhezhi
+Xiangli Yao
+Shorekeeper
+Youhu
+Camellya
+Lumi
+Carlotta
+Roccia
+Phoebe
+Brant
+Cantarella
+Zani
+Ciaccona
+Cartethyia
+Lupa
+Phrolova
+Augusta
+Iuno
+Scar
+Abby
+Magistrate
+Jué

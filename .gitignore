@@ -1,0 +1,4 @@
+.venv/
+config.json
+translation_cache.json
+__pycache__/

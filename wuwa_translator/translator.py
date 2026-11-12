@@ -88,10 +88,32 @@ class DeepLTranslator:
         out = Glossary.restore(result.text)
         with self._lock:
             self.cache[key] = out
-            tmp = self.cache_path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(self.cache, ensure_ascii=False, indent=0), encoding="utf-8")
-            tmp.replace(self.cache_path)
+            self._save()
         return out
+
+    def translate_many(self, texts: list[str], context: str | None = None) -> list[str]:
+        """Banyak teks dalam satu permintaan DeepL; yang sudah pernah diterjemahkan diambil dari cache."""
+        keys = [f"{self.source_lang}>{self.target_lang}|{t}" for t in texts]
+        with self._lock:
+            todo = list(dict.fromkeys(t for t, k in zip(texts, keys) if k not in self.cache))
+        if todo:
+            results = self.client.translate_text(
+                [self.glossary.protect(t) for t in todo],
+                source_lang=self.source_lang, target_lang=self.target_lang,
+                tag_handling="xml", ignore_tags=["k"], split_sentences="nonewlines",
+                preserve_formatting=True, context=context or None,
+            )
+            with self._lock:
+                for t, r in zip(todo, results):
+                    self.cache[f"{self.source_lang}>{self.target_lang}|{t}"] = Glossary.restore(r.text)
+                self._save()
+        with self._lock:
+            return [self.cache[k] for k in keys]
+
+    def _save(self):
+        tmp = self.cache_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self.cache, ensure_ascii=False, indent=0), encoding="utf-8")
+        tmp.replace(self.cache_path)
 
 
 class MockTranslator:
@@ -105,3 +127,6 @@ class MockTranslator:
 
     def translate(self, text: str, context: str | None = None) -> str:
         return "[ID] " + Glossary.restore(self.glossary.protect(text))
+
+    def translate_many(self, texts: list[str], context: str | None = None) -> list[str]:
+        return [self.translate(t) for t in texts]

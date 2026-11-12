@@ -55,5 +55,22 @@ class WindowsOcr:
         result = self._loop.run_until_complete(self._recognize(bitmap))
         return [line.text for line in result.lines]
 
+    def read_line_boxes(self, img: Image.Image) -> list[tuple[str, float, float, float, float]]:
+        """Baris teks + posisinya (x1, y1, x2, y2) dalam koordinat gambar asli."""
+        pre = self.preprocess(img)
+        sx, sy = img.width / pre.width, img.height / pre.height
+        result = self._loop.run_until_complete(self._recognize(self._to_bitmap(pre)))
+        out = []
+        for line in result.lines:
+            rects = [w.bounding_rect for w in line.words]
+            if not rects:
+                continue
+            x1 = min(r.x for r in rects) * sx
+            y1 = min(r.y for r in rects) * sy
+            x2 = max(r.x + r.width for r in rects) * sx
+            y2 = max(r.y + r.height for r in rects) * sy
+            out.append((line.text, x1, y1, x2, y2))
+        return out
+
     async def _recognize(self, bitmap):
         return await self.engine.recognize_async(bitmap)

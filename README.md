@@ -1,70 +1,87 @@
 # WuWa Translator
 
-Overlay terjemahan **Inggris → Indonesia** untuk Wuthering Waves. Cara kerjanya hanya dengan membaca layar:
-screenshot area dialog → OCR bawaan Windows → DeepL → teks ditampilkan di jendela transparan di atas game.
+Overlay terjemahan **Inggris → Indonesia** untuk Wuthering Waves. Program ini hanya membaca layar:
+screenshot → OCR bawaan Windows (CPU) → DeepL → terjemahan ditempel **tepat di atas teks aslinya**.
 
 Game tidak disentuh sama sekali (tidak ada inject, hook memori, atau modifikasi file), jadi aman dari anti-cheat.
+OCR berjalan di CPU (±80 ms per layar penuh), jadi **GPU tetap sepenuhnya untuk game** (DLSS / Frame Generation aman).
 
-## Persiapan (sekali saja)
+## Pasang di PC baru (sekali saja)
 
-1. **API key DeepL Free**: daftar di https://www.deepl.com/pro-api (pilih *DeepL API Free*, 500.000 karakter/bulan gratis;
-   biasanya perlu kartu untuk verifikasi, tapi tidak ditagih). Salin *Authentication Key* (berakhiran `:fx`).
-2. Salin `config.example.json` menjadi `config.json`, lalu isi `"deepl_auth_key": "xxxxxxxx:fx"`.
-   (`config.json` tidak ikut ter-commit, jadi key-mu aman. Kalau file ini belum ada, program akan membuatnya otomatis saat pertama jalan.)
-3. Di game: **Settings → Graphics → Display Mode = Borderless/Windowed** (overlay tidak bisa tampil di atas fullscreen eksklusif),
-   dan **bahasa teks = English**.
-4. Pastikan Windows punya bahasa *English (United States)* (Settings → Time & language → Language & region). Biasanya sudah ada.
+1. Pasang **Git** dan **Python 3.10–3.13** (centang "Add Python to PATH").
+2. Clone lalu jalankan:
+   ```
+   git clone https://github.com/MuhAndiAlfi/wuwa-translator.git
+   cd wuwa-translator
+   run.bat
+   ```
+   `run.bat` memasang semua yang dibutuhkan pada jalan pertama.
+3. Saat pertama jalan, program **menanyakan API key DeepL** di jendela kecil, mengeceknya, lalu menyimpannya di
+   `config.json` di PC itu (file ini tidak ikut ke GitHub). Daftar gratis di https://www.deepl.com/pro-api
+   (*DeepL API Free*, 500.000 karakter/bulan; key berakhiran `:fx`).
+4. Di game: **Settings → Graphics → Display Mode = Borderless/Windowed** (overlay tidak bisa tampil di atas fullscreen
+   eksklusif) dan **bahasa teks = English**.
+5. Windows harus punya bahasa *English (United States)* (Settings → Time & language → Language & region). Biasanya sudah ada.
 
-## Pemakaian
+Update ke versi terbaru: `git pull` di folder itu.
 
-Jalankan `run.bat` (pertama kali akan memasang dependensi otomatis), lalu buka game.
+## Mode
+
+**Otomatis (default):** seluruh layar dibaca terus. Teks yang berbentuk kalimat (dialog, pilihan jawaban, tutorial,
+quest) diterjemahkan dan ditempel di posisinya. Nama pembicara, HUD, angka, dan label pendek dibiarkan.
+Program menunggu efek mengetik selesai, dan kalimat yang sama tidak diterjemahkan dua kali.
+
+**Snapshot (`Ctrl+Alt+S`):** semua teks di layar diterjemahkan sekali, termasuk label pendek. Cocok untuk menu,
+deskripsi item/Echo, dan layar quest. Tekan lagi untuk kembali.
+
+**Area (`Ctrl+Alt+A` untuk ganti mode):** mode lama. Hanya area yang kamu pilih (`Ctrl+Alt+R`) yang dibaca,
+dan terjemahannya tampil di kotak terpisah.
 
 | Hotkey | Fungsi |
 |---|---|
-| `Ctrl+Alt+R` | Pilih area dialog: seret kotak mencakup **nama pembicara + teks dialog** |
-| `Ctrl+Alt+M` | Mode geser overlay (seret, tekan lagi untuk menyimpan posisi) |
-| `Ctrl+Alt+T` | Sembunyikan / tampilkan overlay |
-| `Ctrl+Alt+O` | Tampilkan / sembunyikan teks asli bahasa Inggris |
-| `Ctrl+Alt+P` | Jeda / lanjutkan terjemahan |
+| `Ctrl+Alt+S` | Snapshot: terjemahkan semua teks di layar / tutup snapshot |
+| `Ctrl+Alt+A` | Ganti mode Otomatis ↔ Area |
+| `Ctrl+Alt+T` | Sembunyikan / tampilkan terjemahan |
+| `Ctrl+Alt+P` | Jeda / lanjutkan |
+| `Ctrl+Alt+R` | (Mode Area) pilih area dialog |
+| `Ctrl+Alt+M` | (Mode Area) geser kotak terjemahan |
+| `Ctrl+Alt+O` | (Mode Area) tampilkan teks asli juga |
 | `Ctrl+Alt+Q` | Keluar |
-
-Secara default overlay muncul tepat **di atas** kotak dialog. Hotkey bisa diubah di `config.json`.
 
 Uji tanpa game atau tanpa kuota:
 ```
 .venv\Scripts\python -m wuwa_translator --mock                       # tanpa DeepL
-.venv\Scripts\python -m wuwa_translator --test-image screenshot.png  # uji satu screenshot
+.venv\Scripts\python -m wuwa_translator --test-image screenshot.png  # uji satu screenshot (tanpa jendela)
 ```
 
 ## Isi `config.json`
 
 | Kunci | Default | Arti |
 |---|---|---|
-| `deepl_auth_key` | `""` | API key DeepL (atau pakai environment variable `DEEPL_AUTH_KEY`) |
+| `deepl_auth_key` | `""` | API key DeepL. Ditanyakan otomatis saat pertama jalan (atau pakai env `DEEPL_AUTH_KEY`) |
+| `mode` | `auto` | `auto` = seluruh layar, `region` = hanya area pilihan |
+| `monitor` | `1` | Monitor tempat game (1 = utama, 2 = kedua, ...) |
+| `auto_interval_ms` | `400` | Jeda antar-pembacaan layar di mode otomatis |
+| `auto_opacity` | `0.94` | Transparansi kotak terjemahan di mode otomatis |
+| `auto_ocr_scale` | `1.0` | Pembesaran sebelum OCR di mode otomatis; naikkan ke 1.5 kalau teks game kecil (resolusi rendah) |
 | `source_lang` / `target_lang` | `EN` / `ID` | Bahasa asal dan tujuan DeepL |
-| `region` | `null` | Area dialog yang dibaca; diisi otomatis lewat `Ctrl+Alt+R` |
-| `overlay_pos` | `null` | Posisi overlay `[x, y]`; diisi lewat `Ctrl+Alt+M`. `null` = tepat di atas area dialog |
-| `overlay_width` | `null` | Lebar overlay dalam piksel; `null` = sama dengan lebar area dialog |
-| `font_family` / `font_size` | `Segoe UI` / `16` | Font teks terjemahan |
-| `show_original` | `false` | Tampilkan juga teks Inggris aslinya (`Ctrl+Alt+O`) |
-| `opacity` | `0.86` | Transparansi overlay (0–1) |
-| `detect_speaker` | `true` | Baris pertama yang pendek dianggap nama pembicara dan tidak diterjemahkan |
-| `interval_ms` | `350` | Jeda antar-pembacaan layar |
-| `stable_reads` | `2` | Berapa kali teks harus sama sebelum diterjemahkan |
-| `clear_after_empty_reads` | `4` | Overlay hilang setelah sekian kali pembacaan tidak menemukan teks |
-| `ocr_lang` | `en-US` | Bahasa OCR Windows (harus terpasang di Windows) |
-| `ocr_scale` | `2.0` | Pembesaran gambar sebelum OCR; naikkan kalau teks kecil |
-| `ocr_invert` | `false` | Balik warna sebelum OCR; coba kalau hasil OCR jelek |
-| `hotkeys` | lihat tabel di atas | Kombinasi `Ctrl`/`Alt`/`Shift` + huruf, angka, atau `F1`–`F12` |
+| `region` | `null` | (Mode Area) area dialog; diisi lewat `Ctrl+Alt+R` |
+| `overlay_pos` / `overlay_width` | `null` | (Mode Area) posisi & lebar kotak terjemahan |
+| `font_family` / `font_size` | `Segoe UI` / `16` | Font terjemahan (ukuran di mode otomatis mengikuti teks game) |
+| `show_original` | `false` | (Mode Area) tampilkan juga teks Inggris aslinya |
+| `opacity` | `0.86` | (Mode Area) transparansi kotak |
+| `detect_speaker` | `true` | (Mode Area) baris pertama pendek = nama pembicara |
+| `interval_ms` / `stable_reads` / `clear_after_empty_reads` | `350` / `2` / `4` | (Mode Area) kecepatan baca & kestabilan |
+| `ocr_lang` | `en-US` | Bahasa OCR Windows |
+| `ocr_scale` / `ocr_invert` | `2.0` / `false` | (Mode Area) pembesaran & balik warna sebelum OCR |
+| `hotkeys` | lihat tabel | Kombinasi `Ctrl`/`Alt`/`Shift` + huruf, angka, atau `F1`–`F12` |
 
 ## Tips
 
 - **Glosarium**: `glossary.txt` berisi istilah yang tidak diterjemahkan (Rover, Echo, Tacet Discord, nama karakter...).
   Tambahkan sendiri; format `Istilah => Pengganti` untuk memaksa terjemahan tertentu.
 - **Hemat kuota**: kalimat yang sama tidak diterjemahkan dua kali (disimpan di `translation_cache.json`).
-  Kalimat sebelumnya dikirim sebagai konteks ke DeepL, dan itu tidak dihitung ke kuota.
-- **OCR kurang akurat?** Di `config.json`: naikkan `ocr_scale` (misal 3.0), atau coba `ocr_invert: true`.
-  Buat area sesempit mungkin, cuma teks dialog, tanpa ikon atau tombol.
-- **Terlalu lambat atau terlalu cepat?** `interval_ms` = jeda baca layar, `stable_reads` = berapa kali teks harus sama
-  sebelum diterjemahkan (menunggu efek mengetik selesai).
+  Semua kalimat di layar dikirim sebagai konteks ke DeepL, dan itu tidak dihitung ke kuota.
+- **Ada teks game yang tidak ikut diterjemahkan?** Mode otomatis hanya menerjemahkan kalimat (minimal 3 kata).
+  Untuk label atau menu, pakai Snapshot (`Ctrl+Alt+S`).
 - Kalau game dijalankan sebagai Administrator dan overlay/hotkey tidak bekerja, jalankan `run.bat` sebagai Administrator juga.

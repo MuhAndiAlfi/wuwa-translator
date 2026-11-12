@@ -10,6 +10,7 @@ import tkinter as tk
 from pathlib import Path
 
 from . import win32
+from .auto_mode import AutoPipeline, InPlaceOverlay
 from .ocr import WindowsOcr
 from .pipeline import Dialog, Pipeline
 from .translator import DeepLTranslator, Glossary, MockTranslator
@@ -19,6 +20,11 @@ CONFIG_PATH = ROOT / "config.json"
 
 DEFAULTS = {
     "deepl_auth_key": "",
+    "mode": "auto",            # "auto" = baca seluruh layar, "region" = hanya area yang dipilih
+    "monitor": 1,              # monitor tempat game (1 = monitor utama)
+    "auto_interval_ms": 400,
+    "auto_opacity": 0.94,
+    "auto_ocr_scale": 1.0,
     "source_lang": "EN",
     "target_lang": "ID",
     "region": None,
@@ -37,6 +43,8 @@ DEFAULTS = {
     "ocr_invert": False,
     "hotkeys": {
         "toggle": "Ctrl+Alt+T",
+        "snapshot": "Ctrl+Alt+S",
+        "mode": "Ctrl+Alt+A",
         "select_region": "Ctrl+Alt+R",
         "move": "Ctrl+Alt+M",
         "pause": "Ctrl+Alt+P",
@@ -66,12 +74,43 @@ def make_translator(cfg: dict, mock: bool):
     glossary = Glossary(ROOT / "glossary.txt")
     if mock:
         return MockTranslator(glossary)
-    key = os.environ.get("DEEPL_AUTH_KEY") or cfg.get("deepl_auth_key")
+    key = os.environ.get("DEEPL_AUTH_KEY") or cfg.get("deepl_auth_key") or ask_key(cfg)
     if not key:
-        sys.exit("API key DeepL belum diisi. Isi \"deepl_auth_key\" di config.json "
-                 "(atau jalankan dengan --mock untuk mencoba tanpa DeepL).")
+        sys.exit("Butuh API key DeepL. Jalankan lagi lalu isi key-nya (atau pakai --mock untuk mencoba).")
     return DeepLTranslator(key, glossary, ROOT / "translation_cache.json",
                            cfg["source_lang"], cfg["target_lang"])
+
+
+def ask_key(cfg: dict) -> str | None:
+    """Tanyakan API key DeepL lewat jendela kecil saat pertama dipakai, cek, lalu simpan di config.json (lokal)."""
+    import deepl
+    from tkinter import messagebox, simpledialog
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        while True:
+            key = simpledialog.askstring(
+                "WuWa Translator",
+                "Masukkan API key DeepL kamu (DeepL API Free, berakhiran :fx).\n"
+                "Belum punya? Daftar gratis di https://www.deepl.com/pro-api",
+                show="*", parent=root)
+            if not key or not key.strip():
+                return None
+            key = key.strip()
+            try:
+                deepl.DeepLClient(key).get_usage()
+            except deepl.AuthorizationException:
+                messagebox.showerror("WuWa Translator", "API key tidak valid. Coba lagi.", parent=root)
+                continue
+            except Exception:  # noqa: BLE001 - jaringan bermasalah: simpan saja, dicek saat dipakai
+                pass
+            cfg["deepl_auth_key"] = key
+            save_config(cfg)
+            return key
+    finally:
+        root.destroy()
 
 
 class Overlay:
@@ -224,25 +263,46 @@ class App:
         self.overlay = Overlay(self.root, cfg)
         ocr = WindowsOcr(cfg["ocr_lang"], cfg["ocr_scale"], cfg["ocr_invert"])
         self.pipeline = Pipeline(cfg, ocr, translator, self.events)
+        auto_ocr = WindowsOcr(cfg["ocr_lang"], cfg["auto_ocr_scale"], cfg["ocr_invert"])
+        self.auto = AutoPipeline(cfg, auto_ocr, translator, self.events)
+        self.inplace = InPlaceOverlay(self.root, cfg)
         self.hotkeys = win32.HotkeyThread(cfg["hotkeys"], self.events)
         self.selecting = False
-        hk = cfg["hotkeys"]
-        print(translator.usage_text() if hasattr(translator, "usage_text") else "")
-        print("Hotkey: " + ", ".join(f"{v} = {k}" for k, v in hk.items()))
-        if cfg.get("region"):
-            self.overlay.show_message(f"Siap. Overlay akan muncul saat ada dialog.  ({hk['quit']} = keluar)")
-            self.root.after(2500, lambda: self.overlay.clear() if not self.overlay._last else None)
+        try:
+            print(translator.usage_text())
+        except Exception as e:  # noqa: BLE001
+            print("Tidak bisa cek kuota DeepL:", e)
+        self._apply_mode()
+
+    def _apply_mode(self):
+        hk = self.cfg["hotkeys"]
+        if self.cfg.get("mode", "auto") == "auto":
+            self.pipeline.paused.set()
+            self.auto.paused.clear()
+            self.overlay.clear()
+            msg = (f"Mode OTOMATIS: kalimat di layar diterjemahkan di tempatnya.  {hk['snapshot']} = terjemahkan "
+                   f"semua teks (menu)  ·  {hk['mode']} = ganti mode  ·  {hk['quit']} = keluar")
         else:
-            self.overlay.show_message(f"Tekan {hk['select_region']} lalu seret kotak di sekitar teks dialog game.")
+            self.auto.paused.set()
+            self.auto.reset()
+            self.pipeline.paused.clear()
+            msg = (f"Mode AREA aktif.  {hk['mode']} = ganti mode  ·  {hk['quit']} = keluar" if self.cfg.get("region")
+                   else f"Mode AREA: {hk['select_region']} untuk pilih area dialog  ·  {hk['mode']} = ganti mode")
+        print(msg)
+        print("Hotkey: " + ", ".join(f"{v} = {k}" for k, v in hk.items()))
+        self.overlay.show_message(msg)
+        self.root.after(4000, lambda: self.overlay.clear() if not self.overlay._last else None)
 
     def run(self):
         self.pipeline.start()
+        self.auto.start()
         self.hotkeys.start()
         self.root.after(50, self._poll)
         try:
             self.root.mainloop()
         finally:
             self.pipeline.stopped.set()
+            self.auto.stopped.set()
             self.hotkeys.stop()
 
     def _poll(self):
@@ -255,6 +315,10 @@ class App:
                     else:
                         print(f"\n[{payload.speaker or '-'}] {payload.original}\n  -> {payload.translated}")
                         self.overlay.show_dialog(payload)
+                elif kind == "auto":
+                    self.inplace.draw(payload)
+                    for s in payload:
+                        print(f"  {s.original}\n    -> {s.translated}")
                 elif kind == "status":
                     print(payload)
                 elif kind == "hotkey":
@@ -269,24 +333,37 @@ class App:
         elif action == "toggle":
             ov = self.overlay
             ov.user_hidden = not ov.user_hidden
+            self.inplace.set_hidden(ov.user_hidden)
             if ov.user_hidden:
                 ov.root.withdraw()
             elif ov._last:
                 ov.rerender()
             else:
                 ov.show_message("Overlay aktif")
+        elif action == "snapshot":
+            self.auto.snapshot_requested.set()
+        elif action == "mode":
+            self.cfg["mode"] = "region" if self.cfg.get("mode", "auto") == "auto" else "auto"
+            save_config(self.cfg)
+            self._apply_mode()
         elif action == "select_region" and not self.selecting:
+            if self.cfg.get("mode") != "region":
+                self.cfg["mode"] = "region"
+                self._apply_mode()
             self.selecting = True
             self.pipeline.paused.set()
             RegionSelector(self.root, self._region_done)
         elif action == "move":
             self.overlay.toggle_move()
         elif action == "pause":
-            if self.pipeline.paused.is_set():
-                self.pipeline.paused.clear()
+            target = self.auto if self.cfg.get("mode", "auto") == "auto" else self.pipeline
+            if target.paused.is_set():
+                target.paused.clear()
                 self.overlay.show_message("Terjemahan dilanjutkan")
             else:
-                self.pipeline.paused.set()
+                target.paused.set()
+                if target is self.auto:
+                    self.auto.reset()
                 self.overlay.show_message("Terjemahan dijeda")
         elif action == "original":
             self.cfg["show_original"] = not self.cfg["show_original"]
@@ -307,7 +384,20 @@ def test_image(path: str, cfg: dict, translator):
     """Uji pipeline pada screenshot tanpa membuka jendela apa pun."""
     from PIL import Image
 
-    img = Image.open(path)
+    img = Image.open(path).convert("RGB")
+    if cfg.get("mode", "auto") == "auto":
+        ap = AutoPipeline(cfg, WindowsOcr(cfg["ocr_lang"], cfg["auto_ocr_scale"], cfg["ocr_invert"]),
+                          translator, queue.Queue())
+        ap.process(img)                      # pembacaan 1 (menunggu teks stabil)
+        res = ap.process(img) or []          # pembacaan 2
+        print(f"Mode otomatis: {len(res)} kalimat")
+        for s in res:
+            print(f"  {tuple(int(v) for v in s.bbox)} {s.original}\n    -> {s.translated}")
+        snap = AutoPipeline(cfg, ap.ocr, translator, queue.Queue()).process(img, snapshot=True) or []
+        print(f"Snapshot: {len(snap)} teks")
+        for s in snap:
+            print(f"  {s.original}  ->  {s.translated}")
+        return
     ocr = WindowsOcr(cfg["ocr_lang"], cfg["ocr_scale"], cfg["ocr_invert"])
     p = Pipeline({**cfg, "stable_reads": 1}, ocr, translator, queue.Queue())
     print("OCR:", ocr.read_lines(img))

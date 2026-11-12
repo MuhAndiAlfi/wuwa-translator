@@ -1,5 +1,10 @@
 {
-  "deepl_auth_key": "ISI-API-KEY-DEEPL-KAMU:fx",
+  "deepl_auth_key": "",
+  "mode": "auto",
+  "monitor": 1,
+  "auto_interval_ms": 400,
+  "auto_opacity": 0.94,
+  "auto_ocr_scale": 1.0,
   "source_lang": "EN",
   "target_lang": "ID",
   "region": null,
@@ -18,6 +23,8 @@
   "ocr_invert": false,
   "hotkeys": {
     "toggle": "Ctrl+Alt+T",
+    "snapshot": "Ctrl+Alt+S",
+    "mode": "Ctrl+Alt+A",
     "select_region": "Ctrl+Alt+R",
     "move": "Ctrl+Alt+M",
     "pause": "Ctrl+Alt+P",

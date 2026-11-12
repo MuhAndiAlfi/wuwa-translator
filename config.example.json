@@ -1,5 +1,6 @@
 {
   "deepl_auth_key": "",
+  "deepl_auth_key_protected": "",
   "mode": "auto",
   "monitor": 1,
   "auto_interval_ms": 400,

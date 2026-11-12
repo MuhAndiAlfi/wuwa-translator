@@ -17,7 +17,8 @@ OCR berjalan di CPU (±80 ms per layar penuh), jadi **GPU tetap sepenuhnya untuk
    ```
    `run.bat` memasang semua yang dibutuhkan pada jalan pertama.
 3. Saat pertama jalan, program **menanyakan API key DeepL** di jendela kecil, mengeceknya, lalu menyimpannya di
-   `config.json` di PC itu (file ini tidak ikut ke GitHub). Daftar gratis di https://www.deepl.com/pro-api
+   `config.json` di PC itu **dalam bentuk terenkripsi** (Windows DPAPI: cuma bisa dibuka akun Windows-mu di PC itu;
+   file ini juga tidak ikut ke GitHub). Daftar gratis di https://www.deepl.com/pro-api
    (*DeepL API Free*, 500.000 karakter/bulan; key berakhiran `:fx`).
 4. Di game: **Settings → Graphics → Display Mode = Borderless/Windowed** (overlay tidak bisa tampil di atas fullscreen
    eksklusif) dan **bahasa teks = English**.
@@ -58,7 +59,8 @@ Uji tanpa game atau tanpa kuota:
 
 | Kunci | Default | Arti |
 |---|---|---|
-| `deepl_auth_key` | `""` | API key DeepL. Ditanyakan otomatis saat pertama jalan (atau pakai env `DEEPL_AUTH_KEY`) |
+| `deepl_auth_key_protected` | `""` | API key DeepL terenkripsi (DPAPI). Diisi otomatis saat pertama jalan; jangan diedit manual. Hapus isinya untuk mengganti key |
+| `deepl_auth_key` | `""` | Lama (teks biasa). Kalau diisi, otomatis dipindah ke versi terenkripsi lalu dikosongkan |
 | `mode` | `auto` | `auto` = seluruh layar, `region` = hanya area pilihan |
 | `monitor` | `1` | Monitor tempat game (1 = utama, 2 = kedua, ...) |
 | `auto_interval_ms` | `400` | Jeda antar-pembacaan layar di mode otomatis |

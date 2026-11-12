@@ -9,7 +9,7 @@ import sys
 import tkinter as tk
 from pathlib import Path
 
-from . import win32
+from . import secret, win32
 from .auto_mode import AutoPipeline, InPlaceOverlay
 from .ocr import WindowsOcr
 from .pipeline import Dialog, Pipeline
@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config.json"
 
 DEFAULTS = {
-    "deepl_auth_key": "",
+    "deepl_auth_key": "",            # lama (teks biasa); otomatis dipindah ke versi terenkripsi
+    "deepl_auth_key_protected": "",  # API key terenkripsi Windows DPAPI (cuma bisa dibuka akun Windows ini)
     "mode": "auto",            # "auto" = baca seluruh layar, "region" = hanya area yang dipilih
     "monitor": 1,              # monitor tempat game (1 = monitor utama)
     "auto_interval_ms": 400,
@@ -63,6 +64,12 @@ def load_config() -> dict:
         cfg["hotkeys"] = hotkeys
     else:
         save_config(cfg)
+    if cfg.get("deepl_auth_key"):
+        # Pindahkan key teks biasa ke versi terenkripsi, lalu hapus yang teks biasa
+        cfg["deepl_auth_key_protected"] = secret.protect(cfg["deepl_auth_key"])
+        cfg["deepl_auth_key"] = ""
+        save_config(cfg)
+        print("API key DeepL sekarang disimpan terenkripsi (Windows DPAPI).")
     return cfg
 
 
@@ -74,7 +81,8 @@ def make_translator(cfg: dict, mock: bool):
     glossary = Glossary(ROOT / "glossary.txt")
     if mock:
         return MockTranslator(glossary)
-    key = os.environ.get("DEEPL_AUTH_KEY") or cfg.get("deepl_auth_key") or ask_key(cfg)
+    stored = secret.unprotect(cfg["deepl_auth_key_protected"]) if cfg.get("deepl_auth_key_protected") else None
+    key = os.environ.get("DEEPL_AUTH_KEY") or stored or ask_key(cfg)
     if not key:
         sys.exit("Butuh API key DeepL. Jalankan lagi lalu isi key-nya (atau pakai --mock untuk mencoba).")
     return DeepLTranslator(key, glossary, ROOT / "translation_cache.json",
@@ -106,7 +114,8 @@ def ask_key(cfg: dict) -> str | None:
                 continue
             except Exception:  # noqa: BLE001 - jaringan bermasalah: simpan saja, dicek saat dipakai
                 pass
-            cfg["deepl_auth_key"] = key
+            cfg["deepl_auth_key_protected"] = secret.protect(key)
+            cfg["deepl_auth_key"] = ""
             save_config(cfg)
             return key
     finally:

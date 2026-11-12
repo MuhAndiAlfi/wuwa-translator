@@ -1,0 +1,27 @@
+{
+  "deepl_auth_key": "ISI-API-KEY-DEEPL-KAMU:fx",
+  "source_lang": "EN",
+  "target_lang": "ID",
+  "region": null,
+  "overlay_pos": null,
+  "overlay_width": null,
+  "font_family": "Segoe UI",
+  "font_size": 16,
+  "show_original": false,
+  "opacity": 0.86,
+  "detect_speaker": true,
+  "interval_ms": 350,
+  "stable_reads": 2,
+  "clear_after_empty_reads": 4,
+  "ocr_lang": "en-US",
+  "ocr_scale": 2.0,
+  "ocr_invert": false,
+  "hotkeys": {
+    "toggle": "Ctrl+Alt+T",
+    "select_region": "Ctrl+Alt+R",
+    "move": "Ctrl+Alt+M",
+    "pause": "Ctrl+Alt+P",
+    "original": "Ctrl+Alt+O",
+    "quit": "Ctrl+Alt+Q"
+  }
+}
